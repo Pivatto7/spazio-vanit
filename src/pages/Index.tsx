@@ -58,7 +58,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-12 px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="font-display text-lg tracking-wider text-gradient-gold">LUXE SALON</p>
+          <p className="font-display text-lg tracking-wider text-gradient-gold">SPAZIO VANITÀ</p>
           <p className="font-body text-xs text-muted-foreground">© 2026 Todos os direitos reservados</p>
           <Link to="/admin" className="font-body text-[10px] text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors">
             ●
