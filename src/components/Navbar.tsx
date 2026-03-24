@@ -20,8 +20,9 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 z-40 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/" className="font-display text-xl tracking-wider text-gradient-gold">
-          LUXE SALON
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logo} alt="Spazio Vanità" className="h-8 w-8" />
+          <span className="font-display text-xl tracking-wider text-gradient-gold">SPAZIO VANITÀ</span>
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
