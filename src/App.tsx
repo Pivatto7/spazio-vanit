@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Navbar from "@/components/Navbar";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import AdminAccessButton from "@/components/AdminAccessButton";
 import Index from "./pages/Index";
 import AboutPage from "./pages/AboutPage";
 import ServicesPage from "./pages/ServicesPage";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <WhatsAppButton />
+        <AdminAccessButton />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
