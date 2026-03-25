@@ -29,14 +29,17 @@ const questions = [
 
 function getRecommendation(answers: QuizAnswer) {
   const services = getServices();
+  if (services.length === 0) return null;
+
   if (answers.goal === 'Mudar a cor') {
-    return answers.budget === 'Até R$ 200' || answers.budget === 'R$ 200 - R$ 400'
-      ? services.find(s => s.id === '1')!
-      : services.find(s => s.id === '2')!;
+    return (answers.budget === 'Até R$ 200' || answers.budget === 'R$ 200 - R$ 400')
+      ? services.find(s => s.id === '1') || services[0]
+      : services.find(s => s.id === '2') || services[0];
   }
-  if (answers.goal === 'Cortar e renovar') return services.find(s => s.id === '3')!;
-  if (answers.goal === 'Tratar e recuperar') return services.find(s => s.id === '4')!;
-  if (answers.goal === 'Preparar para evento') return services.find(s => s.id === '6')!;
+  if (answers.goal === 'Cortar e renovar') return services.find(s => s.id === '3') || services[0];
+  if (answers.goal === 'Tratar e recuperar') return services.find(s => s.id === '4') || services[0];
+  if (answers.goal === 'Preparar para evento') return services.find(s => s.id === '6') || services[0];
+  
   return services[0];
 }
 

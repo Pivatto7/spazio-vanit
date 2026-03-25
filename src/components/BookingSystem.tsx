@@ -4,16 +4,37 @@ import { motion } from 'framer-motion';
 import { getServices, getAvailableSlots, saveBooking } from '@/lib/store';
 import { toast } from 'sonner';
 
+const formatWhatsApp = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  let res = '';
+  if (digits.length > 0) {
+    res = `(${digits.slice(0, 2)}`;
+    if (digits.length > 2) {
+      res += `) ${digits.slice(2, 3)}`;
+      if (digits.length > 3) {
+        res += ` ${digits.slice(3, 7)}`;
+        if (digits.length > 7) {
+          res += `-${digits.slice(7)}`;
+        }
+      }
+    }
+  }
+  return res;
+};
+
 const BookingSystem = () => {
   const [searchParams] = useSearchParams();
   const preselectedService = searchParams.get('service') || '';
   const services = getServices();
 
   const [selectedService, setSelectedService] = useState(preselectedService);
-  const [selectedDate, setSelectedDate] = useState('');
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedTime, setSelectedTime] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [confirmPhone, setConfirmPhone] = useState('');
   const [booked, setBooked] = useState(false);
 
   const availableSlots = useMemo(() => {
@@ -21,13 +42,17 @@ const BookingSystem = () => {
     return getAvailableSlots(new Date(selectedDate + 'T12:00:00'), selectedService);
   }, [selectedDate, selectedService]);
 
-  const minDate = new Date().toISOString().split('T')[0];
+  const minDate = todayStr;
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService || !selectedDate || !selectedTime || !clientName || !clientPhone) {
+    if (!selectedService || !selectedDate || !selectedTime || !clientName || !clientPhone || !confirmPhone) {
       toast.error('Preencha todos os campos');
+      return;
+    }
+    if (clientPhone !== confirmPhone) {
+      toast.error('Os números de WhatsApp não coincidem');
       return;
     }
     const svc = services.find(s => s.id === selectedService);
@@ -38,12 +63,12 @@ const BookingSystem = () => {
       serviceId: selectedService,
       date: selectedDate,
       time: selectedTime,
-      status: 'confirmed',
+      status: 'pending',
       createdAt: new Date().toISOString(),
       revenue: svc?.price,
     });
     setBooked(true);
-    toast.success('Agendamento confirmado!');
+    toast.success('Agendamento enviado para análise!');
   };
 
   if (booked) {
@@ -55,12 +80,12 @@ const BookingSystem = () => {
         className="mx-auto max-w-lg px-6 py-24 text-center"
       >
         <div className="mb-6 h-px w-16 mx-auto bg-gradient-gold" />
-        <h2 className="mb-4 font-display text-4xl text-gradient-gold">Confirmado!</h2>
+        <h2 className="mb-4 font-display text-4xl text-gradient-gold">Enviado!</h2>
         <p className="mb-2 font-body text-sm text-muted-foreground">{svc?.name}</p>
         <p className="mb-1 font-body text-sm text-foreground">{selectedDate} às {selectedTime}</p>
         <p className="mb-8 font-body text-sm text-muted-foreground">{clientName}</p>
         <p className="font-body text-xs text-muted-foreground">
-          Enviaremos uma confirmação por WhatsApp. Até breve! ✦
+          Aguarde nossa confirmação por WhatsApp. Até breve! ✦
         </p>
       </motion.div>
     );
@@ -145,8 +170,19 @@ const BookingSystem = () => {
             <input
               type="tel"
               value={clientPhone}
-              onChange={e => setClientPhone(e.target.value)}
-              placeholder="(11) 99999-9999"
+              onChange={e => setClientPhone(formatWhatsApp(e.target.value))}
+              placeholder="(54) 9 9999-9999"
+              className="w-full rounded-sm border border-border bg-card p-4 font-body text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block font-body text-xs tracking-wider uppercase text-muted-foreground">Confirme seu WhatsApp</label>
+            <input
+              type="tel"
+              value={confirmPhone}
+              onChange={e => setConfirmPhone(formatWhatsApp(e.target.value))}
+              placeholder="(54) 9 9999-9999"
               className="w-full rounded-sm border border-border bg-card p-4 font-body text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
             />
           </div>

@@ -16,7 +16,8 @@ export interface Booking {
   serviceId: string;
   date: string;
   time: string;
-  status: 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'paid';
+  seen?: boolean;
   createdAt: string;
   revenue?: number;
 }
@@ -45,4 +46,18 @@ export interface DaySchedule {
   day: number; // 0-6
   slots: string[];
   enabled: boolean;
+}
+
+export interface Sale {
+  id: string;
+  description: string;
+  value: number;
+  date: string;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  value: number;
+  date: string;
 }

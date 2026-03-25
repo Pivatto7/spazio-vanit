@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Instagram } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 const Navbar = () => {
@@ -39,9 +39,21 @@ const Navbar = () => {
           ))}
         </div>
 
-        <button onClick={() => setOpen(!open)} className="text-foreground md:hidden">
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-6">
+          <a
+            href="https://www.instagram.com/vanitaspazio/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground transition-all hover:text-primary hover:scale-110"
+            aria-label="Instagram"
+          >
+            <Instagram className="h-5 w-5" />
+          </a>
+
+          <button onClick={() => setOpen(!open)} className="text-foreground md:hidden">
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {open && (

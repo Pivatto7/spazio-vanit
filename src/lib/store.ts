@@ -1,8 +1,10 @@
-import { Service, Booking, Testimonial, DaySchedule } from './types';
+import { Service, Booking, Testimonial, DaySchedule, Sale, Expense } from './types';
 
 const SERVICES_KEY = 'salon_services';
 const BOOKINGS_KEY = 'salon_bookings';
 const SCHEDULES_KEY = 'salon_schedules';
+const SALES_KEY = 'salon_sales';
+const EXPENSES_KEY = 'salon_expenses';
 
 const defaultServices: Service[] = [
   {
@@ -106,7 +108,7 @@ export function getBookings(): Booking[] {
 
 export function saveBooking(booking: Booking) {
   const bookings = getBookings();
-  bookings.push(booking);
+  bookings.push({ ...booking, seen: false });
   setItem(BOOKINGS_KEY, bookings);
 }
 
@@ -120,6 +122,22 @@ export function getSchedules(): DaySchedule[] {
 
 export function saveSchedules(schedules: DaySchedule[]) {
   setItem(SCHEDULES_KEY, schedules);
+}
+
+export function getSales(): Sale[] {
+  return getItem(SALES_KEY, []);
+}
+
+export function saveSales(sales: Sale[]) {
+  setItem(SALES_KEY, sales);
+}
+
+export function getExpenses(): Expense[] {
+  return getItem(EXPENSES_KEY, []);
+}
+
+export function saveExpenses(expenses: Expense[]) {
+  setItem(EXPENSES_KEY, expenses);
 }
 
 export function getTestimonials(): Testimonial[] {
@@ -137,18 +155,42 @@ export function getAvailableSlots(date: Date, serviceId: string): string[] {
     .filter(b => b.date === dateStr && b.status !== 'cancelled')
     .map(b => b.time);
 
-  return daySchedule.slots.filter(slot => !bookedTimes.includes(slot));
+  const d = new Date();
+  const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [currentH, currentM] = [d.getHours(), d.getMinutes()];
+
+  return daySchedule.slots.filter(slot => {
+    if (bookedTimes.includes(slot)) return false;
+    
+    // Se for hoje (local), filtrar horários passados
+    if (dateStr === todayStr) {
+      const [h, m] = slot.split(':').map(Number);
+      if (h < currentH || (h === currentH && m <= currentM)) {
+        return false;
+      }
+    }
+    return true;
+  });
 }
 
-export function getFinancialData() {
-  const bookings = getBookings().filter(b => b.status !== 'cancelled');
+export function getFinancialData(targetDate?: string) {
+  const bookings = getBookings().filter(b => b.status === 'paid' || b.status === 'completed');
   const services = getServices();
-  const now = new Date();
+  const sales = getSales();
+  const expenses = getExpenses();
+  
+  let now = new Date();
+  if (targetDate) {
+    const d = new Date(targetDate + 'T12:00:00');
+    if (!isNaN(d.getTime())) {
+      now = d;
+    }
+  }
   const today = now.toISOString().split('T')[0];
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const thisYear = String(now.getFullYear());
 
-  const getRevenue = (b: Booking) => {
+  const getBookingRevenue = (b: Booking) => {
     if (b.revenue) return b.revenue;
     const svc = services.find(s => s.id === b.serviceId);
     return svc?.price || 0;
@@ -158,21 +200,40 @@ export function getFinancialData() {
   const monthlyBookings = bookings.filter(b => b.date.startsWith(thisMonth));
   const yearlyBookings = bookings.filter(b => b.date.startsWith(thisYear));
 
-  const sum = (bs: Booking[]) => bs.reduce((acc, b) => acc + getRevenue(b), 0);
+  const dailySales = sales.filter(s => s.date === today);
+  const monthlySales = sales.filter(s => s.date.startsWith(thisMonth));
+  const yearlySales = sales.filter(s => s.date.startsWith(thisYear));
+
+  const monthlyExpensesList = expenses.filter(e => e.date.startsWith(thisMonth));
+
+  const sumBookings = (bs: Booking[]) => bs.reduce((acc, b) => acc + getBookingRevenue(b), 0);
+  const sumSales = (ss: Sale[]) => ss.reduce((acc, s) => acc + s.value, 0);
+  const sumExpenses = (es: Expense[]) => es.reduce((acc, e) => acc + e.value, 0);
+
+  const mRevenue = sumBookings(monthlyBookings) + sumSales(monthlySales);
+  const mExpenses = sumExpenses(monthlyExpensesList);
 
   return {
-    dailyRevenue: sum(dailyBookings),
-    monthlyRevenue: sum(monthlyBookings),
-    yearlyRevenue: sum(yearlyBookings),
-    dailyCount: dailyBookings.length,
-    monthlyCount: monthlyBookings.length,
-    yearlyCount: yearlyBookings.length,
-    averageTicket: bookings.length > 0 ? sum(bookings) / bookings.length : 0,
-    estimatedProfit: sum(monthlyBookings) * 0.6,
+    dailyRevenue: sumBookings(dailyBookings) + sumSales(dailySales),
+    monthlyRevenue: mRevenue,
+    yearlyRevenue: sumBookings(yearlyBookings) + sumSales(yearlySales),
+    monthlyExpenses: mExpenses,
+    dailyCount: dailyBookings.length + dailySales.length,
+    monthlyCount: monthlyBookings.length + monthlySales.length,
+    yearlyCount: yearlyBookings.length + yearlySales.length,
+    averageTicket: (bookings.length + sales.length) > 0 
+      ? (sumBookings(bookings) + sumSales(sales)) / (bookings.length + sales.length) 
+      : 0,
+    estimatedProfit: mRevenue - mExpenses,
     monthlyData: Array.from({ length: 12 }, (_, i) => {
-      const month = `${now.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
-      const mBookings = bookings.filter(b => b.date.startsWith(month));
-      return { month: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][i], revenue: sum(mBookings), count: mBookings.length };
+      const monthStr = `${now.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
+      const mBookings = bookings.filter(b => b.date.startsWith(monthStr));
+      const mSales = sales.filter(s => s.date.startsWith(monthStr));
+      return { 
+        month: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][i], 
+        revenue: sumBookings(mBookings) + sumSales(mSales), 
+        count: mBookings.length + mSales.length 
+      };
     }),
   };
 }
