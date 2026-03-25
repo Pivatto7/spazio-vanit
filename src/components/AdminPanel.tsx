@@ -17,7 +17,8 @@ import {
   PieChart,
   BarChart3,
   Bell,
-  MessageCircle
+  MessageCircle,
+  Repeat
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -76,8 +77,9 @@ const AdminPanel = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const [dashboardDate, setDashboardDate] = useState(todayStr);
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [dashboardDate, setDashboardDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dashboardEndDate, setDashboardEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
   const [showModal, setShowModal] = useState(false);
   const unseenBookings = bookings.filter(b => b.seen === false);
@@ -118,7 +120,7 @@ const AdminPanel = () => {
 
   if (!loggedIn) return <AdminLogin onLogin={handleLogin} />;
 
-  const financial = getFinancialData(dashboardDate);
+  const financial = getFinancialData(dashboardDate, dashboardEndDate);
   const tabs = [
     { id: 'dashboard' as const, label: 'Dashboard' },
     { id: 'bookings' as const, label: 'Agendamentos' },
@@ -208,23 +210,37 @@ const AdminPanel = () => {
                 <h3 className="font-display text-xl text-gradient-gold">Filtro de Visualização</h3>
                 <p className="font-body text-xs text-muted-foreground">Selecione uma data para analisar o desempenho</p>
               </div>
-              <input 
-                type="date" 
-                value={dashboardDate} 
-                onChange={e => setDashboardDate(e.target.value)}
-                className="rounded-sm border border-border bg-background px-4 py-2 font-body text-sm text-foreground focus:border-primary focus:outline-none"
-              />
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="font-body text-[10px] uppercase tracking-wider text-muted-foreground">Início</label>
+                  <input 
+                    type="date" 
+                    value={dashboardDate} 
+                    onChange={e => setDashboardDate(e.target.value)}
+                    className="rounded-sm border border-border bg-background px-4 py-2 font-body text-sm text-foreground focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="font-body text-[10px] uppercase tracking-wider text-muted-foreground">Fim</label>
+                  <input 
+                    type="date" 
+                    value={dashboardEndDate} 
+                    onChange={e => setDashboardEndDate(e.target.value)}
+                    className="rounded-sm border border-border bg-background px-4 py-2 font-body text-sm text-foreground focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard icon={DollarSign} label="Faturamento no Dia" value={fmt(financial.dailyRevenue)} colorClass="text-gradient-gold" />
+              <StatCard icon={DollarSign} label="Faturamento no Período" value={fmt(financial.dailyRevenue)} colorClass="text-gradient-gold" />
               <StatCard icon={TrendingUp} label="Faturamento (Mês)" value={fmt(financial.monthlyRevenue)} colorClass="text-gradient-gold" />
               <StatCard icon={DollarSign} label="Despesas (Mês)" value={fmt(financial.monthlyExpenses || 0)} colorClass="text-destructive" />
               <StatCard icon={TrendingUp} label="Lucro Líquido Real" value={fmt(financial.estimatedProfit)} colorClass="text-green-500" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard icon={DollarSign} label="Faturamento no Ano" value={fmt(financial.yearlyRevenue)} colorClass="text-gradient-gold" />
-              <StatCard icon={Calendar} label="Atendimentos (Dia)" value={String(financial.dailyCount)} colorClass="text-foreground" />
+              <StatCard icon={Calendar} label="Atendimentos (Período)" value={String(financial.dailyCount)} colorClass="text-foreground" />
               <StatCard icon={Users} label="Ticket Médio" value={fmt(financial.averageTicket)} colorClass="text-foreground" />
             </div>
             <div className="rounded-sm border border-border bg-card p-6">
@@ -521,6 +537,7 @@ const FinanceManager = () => {
   const [newSaleValue, setNewSaleValue] = useState('');
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseValue, setNewExpenseValue] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -538,12 +555,19 @@ const FinanceManager = () => {
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExpenseDesc || !newExpenseValue) return;
-    const ne = { id: Date.now().toString(), description: newExpenseDesc, value: Number(newExpenseValue), date: today };
+    const ne = { 
+      id: Date.now().toString(), 
+      description: newExpenseDesc, 
+      value: Number(newExpenseValue), 
+      date: today,
+      isRecurring 
+    };
     const updated = [ne, ...expenses];
     saveExpenses(updated);
     setExpensesState(updated);
     setNewExpenseDesc('');
     setNewExpenseValue('');
+    setIsRecurring(false);
   };
 
   const handleDeleteSale = (id: string) => {
@@ -593,16 +617,28 @@ const FinanceManager = () => {
         <h3 className="mb-4 font-display text-xl text-gradient-gold">Despesas da Empresa</h3>
         <form onSubmit={handleAddExpense} className="mb-6 space-y-3">
           <input value={newExpenseDesc} onChange={e => setNewExpenseDesc(e.target.value)} placeholder="Descrição da despesa" className="w-full rounded-sm border border-border bg-background p-3 font-body text-sm text-foreground focus:border-primary focus:outline-none" />
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
             <input type="number" step="0.01" value={newExpenseValue} onChange={e => setNewExpenseValue(e.target.value)} placeholder="Valor (R$)" className="w-full rounded-sm border border-border bg-background p-3 font-body text-sm text-foreground focus:border-primary focus:outline-none" />
-            <button type="submit" className="rounded-sm bg-destructive px-6 py-3 font-body text-sm font-semibold uppercase text-destructive-foreground hover:bg-destructive/90">Adicionar</button>
+            <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-sm border border-border bg-background px-3 py-2 text-muted-foreground outline-none transition-all hover:border-primary focus:border-primary">
+              <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="h-4 w-4 rounded border-border-border bg-background text-primary focus:ring-primary" />
+              <span className="font-body text-xs">Recorrente</span>
+            </label>
+            <button type="submit" className="rounded-sm bg-destructive px-6 py-3 font-body text-sm font-semibold uppercase text-destructive-foreground hover:bg-destructive/90 transition-all">Adicionar</button>
           </div>
         </form>
         <div className="space-y-3">
           {expenses.slice(0, 50).map(e => (
             <div key={e.id} className="flex items-center justify-between border-b border-border/50 pb-2">
               <div>
-                <p className="font-body text-sm text-foreground">{e.description}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-body text-sm text-foreground">{e.description}</p>
+                  {e.isRecurring && (
+                    <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 font-body text-[10px] text-primary">
+                      <Repeat size={8} />
+                      Recorrente
+                    </span>
+                  )}
+                </div>
                 <p className="font-body text-xs text-muted-foreground">{e.date}</p>
               </div>
               <div className="flex items-center gap-3">

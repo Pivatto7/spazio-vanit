@@ -60,4 +60,5 @@ export interface Expense {
   description: string;
   value: number;
   date: string;
+  isRecurring?: boolean;
 }

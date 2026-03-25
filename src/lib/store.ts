@@ -173,22 +173,17 @@ export function getAvailableSlots(date: Date, serviceId: string): string[] {
   });
 }
 
-export function getFinancialData(targetDate?: string) {
+export function getFinancialData(startDate?: string, endDate?: string) {
   const bookings = getBookings().filter(b => b.status === 'paid' || b.status === 'completed');
   const services = getServices();
   const sales = getSales();
   const expenses = getExpenses();
   
-  let now = new Date();
-  if (targetDate) {
-    const d = new Date(targetDate + 'T12:00:00');
-    if (!isNaN(d.getTime())) {
-      now = d;
-    }
-  }
-  const today = now.toISOString().split('T')[0];
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const thisYear = String(now.getFullYear());
+  const start = startDate || new Date().toISOString().split('T')[0];
+  const end = endDate || start;
+
+  const thisMonth = start.substring(0, 7);
+  const thisYear = start.substring(0, 4);
 
   const getBookingRevenue = (b: Booking) => {
     if (b.revenue) return b.revenue;
@@ -196,15 +191,17 @@ export function getFinancialData(targetDate?: string) {
     return svc?.price || 0;
   };
 
-  const dailyBookings = bookings.filter(b => b.date === today);
+  const periodBookings = bookings.filter(b => b.date >= start && b.date <= end);
   const monthlyBookings = bookings.filter(b => b.date.startsWith(thisMonth));
   const yearlyBookings = bookings.filter(b => b.date.startsWith(thisYear));
 
-  const dailySales = sales.filter(s => s.date === today);
+  const periodSales = sales.filter(s => s.date >= start && s.date <= end);
   const monthlySales = sales.filter(s => s.date.startsWith(thisMonth));
   const yearlySales = sales.filter(s => s.date.startsWith(thisYear));
 
-  const monthlyExpensesList = expenses.filter(e => e.date.startsWith(thisMonth));
+  const monthlyExpensesList = expenses.filter(e => 
+    e.date.startsWith(thisMonth) || (e.isRecurring && e.date.substring(0, 7) <= thisMonth)
+  );
 
   const sumBookings = (bs: Booking[]) => bs.reduce((acc, b) => acc + getBookingRevenue(b), 0);
   const sumSales = (ss: Sale[]) => ss.reduce((acc, s) => acc + s.value, 0);
@@ -214,11 +211,11 @@ export function getFinancialData(targetDate?: string) {
   const mExpenses = sumExpenses(monthlyExpensesList);
 
   return {
-    dailyRevenue: sumBookings(dailyBookings) + sumSales(dailySales),
+    dailyRevenue: sumBookings(periodBookings) + sumSales(periodSales),
     monthlyRevenue: mRevenue,
     yearlyRevenue: sumBookings(yearlyBookings) + sumSales(yearlySales),
     monthlyExpenses: mExpenses,
-    dailyCount: dailyBookings.length + dailySales.length,
+    dailyCount: periodBookings.length + periodSales.length,
     monthlyCount: monthlyBookings.length + monthlySales.length,
     yearlyCount: yearlyBookings.length + yearlySales.length,
     averageTicket: (bookings.length + sales.length) > 0 
@@ -226,7 +223,9 @@ export function getFinancialData(targetDate?: string) {
       : 0,
     estimatedProfit: mRevenue - mExpenses,
     monthlyData: Array.from({ length: 12 }, (_, i) => {
-      const monthStr = `${now.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
+      const referenceDate = new Date(start + 'T12:00:00');
+      const year = referenceDate.getFullYear();
+      const monthStr = `${year}-${String(i + 1).padStart(2, '0')}`;
       const mBookings = bookings.filter(b => b.date.startsWith(monthStr));
       const mSales = sales.filter(s => s.date.startsWith(monthStr));
       return { 
