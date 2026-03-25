@@ -102,13 +102,12 @@ const AdminPanel = () => {
   }, [unseenBookings.length]);
 
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'salon_bookings' && e.newValue) {
-        setBookingsState(JSON.parse(e.newValue));
-      }
+    const handleUpdate = () => {
+      setBookingsState(getBookings());
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('store_updated', handleUpdate);
     
     // Inscreve no Realtime do Supabase
     const channel = subscribeToBookings((newBookings) => {
@@ -116,7 +115,8 @@ const AdminPanel = () => {
     });
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('store_updated', handleUpdate);
       supabase.removeChannel(channel);
     };
   }, []);
