@@ -156,7 +156,27 @@ function getItem<T>(key: string, fallback: T): T {
 
 function setItem<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
+  window.dispatchEvent(new Event('store_updated'));
 }
+
+import { useState, useEffect } from 'react';
+
+export function useServices() {
+  const [services, setServices] = useState<Service[]>(getServices());
+
+  useEffect(() => {
+    const handleUpdate = () => setServices(getServices());
+    window.addEventListener('store_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('store_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  return services;
+}
+
 
 export async function syncFromSupabase() {
   try {

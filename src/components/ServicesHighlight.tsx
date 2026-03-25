@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { getServices } from '@/lib/store';
+import { useServices } from '@/lib/store';
 
 const ServicesHighlight = () => {
-  const services = getServices().slice(0, 3);
+  const services = useServices().slice(0, 6);
 
   return (
     <section className="py-24 px-6">

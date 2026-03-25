@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { getServices } from '@/lib/store';
+import { useServices } from '@/lib/store';
 
 const ServicesPage = () => {
-  const services = getServices();
+  const services = useServices();
   const categories = [...new Set(services.map(s => s.category))];
 
   return (

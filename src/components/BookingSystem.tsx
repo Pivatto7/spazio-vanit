@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getServices, getAvailableSlots, saveBooking } from '@/lib/store';
+import { getAvailableSlots, saveBooking, useServices } from '@/lib/store';
 import { toast } from 'sonner';
 
 const formatWhatsApp = (value: string) => {
@@ -25,7 +25,7 @@ const formatWhatsApp = (value: string) => {
 const BookingSystem = () => {
   const [searchParams] = useSearchParams();
   const preselectedService = searchParams.get('service') || '';
-  const services = getServices();
+  const services = useServices();
 
   const [selectedService, setSelectedService] = useState(preselectedService);
   const today = new Date();
