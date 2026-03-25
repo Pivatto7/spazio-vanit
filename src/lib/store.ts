@@ -255,8 +255,10 @@ export async function syncFromSupabase() {
       s = localSvc as any;
     }
 
-    if (b && b.length === 0) {
-      await supabase.from('bookings').upsert(getBookings());
+    const localBk = getBookings();
+    if (b && b.length === 0 && localBk.length > 0) {
+      await supabase.from('bookings').upsert(localBk);
+      b = localBk as any;
     }
     if (sch && sch.length === 0) {
       await supabase.from('schedules').upsert(getSchedules());
@@ -268,11 +270,11 @@ export async function syncFromSupabase() {
       await supabase.from('expenses').upsert(getExpenses());
     }
 
-    if (b && b.length > 0) setItem(BOOKINGS_KEY, b);
-    if (s && s.length > 0) setItem(SERVICES_KEY, s);
-    if (sch && sch.length > 0) setItem(SCHEDULES_KEY, sch);
-    if (sl && sl.length > 0) setItem(SALES_KEY, sl);
-    if (e && e.length > 0) setItem(EXPENSES_KEY, e);
+    if (b) setItem(BOOKINGS_KEY, b);
+    if (s) setItem(SERVICES_KEY, s);
+    if (sch) setItem(SCHEDULES_KEY, sch);
+    if (sl) setItem(SALES_KEY, sl);
+    if (e) setItem(EXPENSES_KEY, e);
     
     return true;
   } catch (err) {
