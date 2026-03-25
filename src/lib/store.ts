@@ -62,6 +62,69 @@ const defaultServices: Service[] = [
     price: 400,
     category: 'Finalização',
   },
+  {
+    id: '7',
+    name: 'Spa Capilar Premium',
+    description: 'Experiência relaxante de aromaterapia com massagem craniana, esfoliação do couro cabeludo e nutrição intensiva com óleos essenciais.',
+    benefits: ['Alívio de tensão e estresse', 'Renovação celular do couro', 'Redução de queda', 'Brilho e maciez imediata'],
+    duration: '1h',
+    price: 280,
+    category: 'Tratamento',
+  },
+  {
+    id: '8',
+    name: 'Alisamento Orgânico',
+    description: 'Alisamento à base de ácidos orgânicos, sem formol. Proporciona fios 100% lisos, soltos e com aspecto natural.',
+    benefits: ['Fórmula vegana e sem cheiro', 'Liso compatível com luzes', 'Balanço natural', 'Zero ardência'],
+    duration: '3h',
+    price: 450,
+    category: 'Tratamento',
+  },
+  {
+    id: '9',
+    name: 'Maquiagem Social',
+    description: 'Produção de maquiagem para eventos noturnos ou diurnos. Produtos importados e longa duração.',
+    benefits: ['Pele blindada duradoura', 'Design de olhar personalizado', 'Cílios postiços inclusos', 'Produtos premium (Dior, MAC)'],
+    duration: '1h15',
+    price: 250,
+    category: 'Estética',
+  },
+  {
+    id: '10',
+    name: 'Design de Sobrancelhas',
+    description: 'Mapeamento facial e design de sobrancelhas personalizado para harmonizar seu olhar.',
+    benefits: ['Alinhamento facial perfeito', 'Retirada em pinça e linha', 'Tonalização com Henna ou Tintura', 'Finalização calmante'],
+    duration: '40m',
+    price: 80,
+    category: 'Estética',
+  },
+  {
+    id: '11',
+    name: 'SPA Pés e Mãos',
+    description: 'Cutilagem e esmaltação complementada por spa das mãos e pés com esfoliação, máscara de argila e massagem relaxante.',
+    benefits: ['Cutilagem perfeita e segura', 'Esmaltes hipoalergênicos importados', 'Pele ultramacia', 'Prevenção contra calosidades'],
+    duration: '1h45',
+    price: 130,
+    category: 'Beleza',
+  },
+  {
+    id: '12',
+    name: 'Morena Iluminada',
+    description: 'Técnica especializada para cabelos escuros. Traz luminosidade sutil em tons de mel, caramelo, amêndoa ou avelã.',
+    benefits: ['Não precisa descolorir tudo', 'Baixa manutenção', 'Mantém a saúde do fio escuro', 'Efeito moderno e elegante'],
+    duration: '3h30',
+    price: 480,
+    category: 'Coloração',
+  },
+  {
+    id: '13',
+    name: 'Botox Capilar Premium',
+    description: 'Tratamento de preenchimento dos fios que devolve a massa capilar perdida. Reduz volume e elimina 100% do frizz.',
+    benefits: ['Alinhamento da fibra', 'Frizz controlado por 45 dias', 'Reposição de aminoácidos', 'Toque de seda'],
+    duration: '2h',
+    price: 300,
+    category: 'Tratamento',
+  }
 ];
 
 const defaultTestimonials: Testimonial[] = [
@@ -97,7 +160,7 @@ function setItem<T>(key: string, value: T) {
 
 export async function syncFromSupabase() {
   try {
-    const [
+    let [
       { data: b },
       { data: s },
       { data: sch },
@@ -111,22 +174,33 @@ export async function syncFromSupabase() {
       supabase.from('expenses').select('*')
     ]);
 
-    // Se o banco estiver vazio mas o local tiver dados, faz o upload inicial
-    if (s && s.length === 0) {
-      const localSvc = getServices();
-      const localSch = getSchedules();
-      const localBk = getBookings();
-      const localSl = getSales();
-      const localEx = getExpenses();
-      
-      await Promise.all([
-        supabase.from('services').upsert(localSvc),
-        supabase.from('schedules').upsert(localSch),
-        supabase.from('bookings').upsert(localBk),
-        supabase.from('sales').upsert(localSl),
-        supabase.from('expenses').upsert(localEx)
-      ]);
-      return true;
+    // Se o banco estiver vazio mas o local tiver dados, ou se faltar serviços novos, mescla
+    const localSvc = getServices();
+    
+    // Sincroniza serviços padrão (defaults) que não estão no Supabase
+    if (s) {
+      const existingIds = new Set(s.map((x: any) => x.id));
+      const missing = defaultServices.filter(svc => !existingIds.has(svc.id));
+      if (missing.length > 0) {
+        await supabase.from('services').upsert(missing);
+        s.push(...missing);
+      }
+    } else if (!s || s.length === 0) {
+      await supabase.from('services').upsert(localSvc);
+      s = localSvc as any;
+    }
+
+    if (b && b.length === 0) {
+      await supabase.from('bookings').upsert(getBookings());
+    }
+    if (sch && sch.length === 0) {
+      await supabase.from('schedules').upsert(getSchedules());
+    }
+    if (sl && sl.length === 0) {
+      await supabase.from('sales').upsert(getSales());
+    }
+    if (e && e.length === 0) {
+      await supabase.from('expenses').upsert(getExpenses());
     }
 
     if (b && b.length > 0) setItem(BOOKINGS_KEY, b);
