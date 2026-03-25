@@ -343,7 +343,18 @@ export function saveBooking(booking: Booking) {
 
 export function updateBookings(bookings: Booking[]) {
   setItem(BOOKINGS_KEY, bookings);
-  supabase.from('bookings').upsert(bookings).then();
+  supabase.from('bookings').upsert(bookings).then(({ error }) => {
+    if(error) console.error(error);
+  });
+}
+
+export function deleteBookingFromStore(id: string) {
+  const bookings = getBookings();
+  const updated = bookings.filter(b => b.id !== id);
+  setItem(BOOKINGS_KEY, updated);
+  supabase.from('bookings').delete().eq('id', id).then(({ error }) => {
+    if (error) console.error('Erro ao deletar:', error);
+  });
 }
 
 export function getSchedules(): DaySchedule[] {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getServices, getBookings, updateBookings, saveServices, getSchedules, saveSchedules, getFinancialData, getSales, saveSales, getExpenses, saveExpenses, subscribeToBookings } from '@/lib/store';
+import { getServices, getBookings, updateBookings, saveServices, getSchedules, saveSchedules, getFinancialData, getSales, saveSales, getExpenses, saveExpenses, subscribeToBookings, deleteBookingFromStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Service, Booking } from '@/lib/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -151,11 +151,8 @@ const AdminPanel = () => {
 
   const handleDeleteBooking = (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este agendamento para sempre?')) {
-      setBookingsState(prev => {
-        const updated = prev.filter(b => b.id !== id);
-        updateBookings(updated);
-        return updated;
-      });
+      deleteBookingFromStore(id);
+      setBookingsState(prev => prev.filter(b => b.id !== id));
       toast.success('Agendamento excluído');
     }
   };
