@@ -142,6 +142,26 @@ export async function syncFromSupabase() {
   }
 }
 
+export function subscribeToBookings(callback: (bookings: Booking[]) => void) {
+  // Configura a assinatura no canal de realtime da tabela bookings
+  const channel = supabase.channel('public:bookings')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async (payload) => {
+      // Quando ocorre mudança no banco, busca a lista completa mais atualizada (ou pode otimisticamente atualizar)
+      const { data } = await supabase.from('bookings').select('*');
+      if (data) {
+        setItem(BOOKINGS_KEY, data);
+        callback(data as Booking[]);
+      }
+    });
+    
+  return channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log('Realtime bookings sync ativo!');
+    }
+  });
+}
+
+
 export function getServices(): Service[] {
   return getItem(SERVICES_KEY, defaultServices);
 }
@@ -160,7 +180,14 @@ export function saveBooking(booking: Booking) {
   const bookings = getBookings();
   bookings.push(b);
   setItem(BOOKINGS_KEY, bookings);
-  supabase.from('bookings').insert(b).then();
+  
+  supabase.from('bookings').insert(b).then(({ error }) => {
+    if (error) {
+      console.error('Erro ao salvar no banco em nuvem:', error);
+      // Se não fosse silencioso, poderíamos disparar um toast de erro aqui, 
+      // mas como pode ser falta de internet, deixamos apenas no console.
+    }
+  });
 }
 
 export function updateBookings(bookings: Booking[]) {

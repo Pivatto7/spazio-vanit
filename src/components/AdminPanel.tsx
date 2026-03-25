@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getServices, getBookings, updateBookings, saveServices, getSchedules, saveSchedules, getFinancialData, getSales, saveSales, getExpenses, saveExpenses } from '@/lib/store';
+import { getServices, getBookings, updateBookings, saveServices, getSchedules, saveSchedules, getFinancialData, getSales, saveSales, getExpenses, saveExpenses, subscribeToBookings } from '@/lib/store';
+import { supabase } from '@/lib/supabase';
 import type { Service, Booking } from '@/lib/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
@@ -108,7 +109,16 @@ const AdminPanel = () => {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    
+    // Inscreve no Realtime do Supabase
+    const channel = subscribeToBookings((newBookings) => {
+      setBookingsState(newBookings);
+    });
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const markAllAsSeen = () => {
