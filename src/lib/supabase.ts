@@ -7,4 +7,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not found. Local storage will be used as fallback.');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// Cria o cliente apenas se tiver as chaves válidas. 
+// Caso contrário, cria um "dummy" client para não quebrar a aplicação (tela branca).
+export const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : createClient('https://placeholder.supabase.co', 'placeholder') as any;
