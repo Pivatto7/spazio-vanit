@@ -13,28 +13,37 @@ import BookingPage from "./pages/BookingPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
+import { useEffect } from "react";
+import { syncFromSupabase } from "./lib/store";
+
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
-      <BrowserRouter>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/sobre" element={<AboutPage />} />
-          <Route path="/servicos" element={<ServicesPage />} />
-          <Route path="/quiz" element={<QuizPage />} />
-          <Route path="/agendamento" element={<BookingPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <WhatsAppButton />
-        <AdminAccessButton />
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    syncFromSupabase();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Sonner />
+        <BrowserRouter>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/sobre" element={<AboutPage />} />
+            <Route path="/servicos" element={<ServicesPage />} />
+            <Route path="/quiz" element={<QuizPage />} />
+            <Route path="/agendamento" element={<BookingPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <WhatsAppButton />
+          <AdminAccessButton />
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

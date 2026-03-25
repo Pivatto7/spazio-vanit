@@ -1,4 +1,5 @@
-import { Service, Booking, Testimonial, DaySchedule, Sale, Expense } from './types';
+import { supabase } from './supabase';
+import type { Service, Booking, Testimonial, DaySchedule, Sale, Expense } from './types';
 
 const SERVICES_KEY = 'salon_services';
 const BOOKINGS_KEY = 'salon_bookings';
@@ -94,12 +95,60 @@ function setItem<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+export async function syncFromSupabase() {
+  try {
+    const [
+      { data: b },
+      { data: s },
+      { data: sch },
+      { data: sl },
+      { data: e }
+    ] = await Promise.all([
+      supabase.from('bookings').select('*'),
+      supabase.from('services').select('*'),
+      supabase.from('schedules').select('*'),
+      supabase.from('sales').select('*'),
+      supabase.from('expenses').select('*')
+    ]);
+
+    // Se o banco estiver vazio mas o local tiver dados, faz o upload inicial
+    if (s && s.length === 0) {
+      const localSvc = getServices();
+      const localSch = getSchedules();
+      const localBk = getBookings();
+      const localSl = getSales();
+      const localEx = getExpenses();
+      
+      await Promise.all([
+        supabase.from('services').upsert(localSvc),
+        supabase.from('schedules').upsert(localSch),
+        supabase.from('bookings').upsert(localBk),
+        supabase.from('sales').upsert(localSl),
+        supabase.from('expenses').upsert(localEx)
+      ]);
+      return true;
+    }
+
+    if (b && b.length > 0) setItem(BOOKINGS_KEY, b);
+    if (s && s.length > 0) setItem(SERVICES_KEY, s);
+    if (sch && sch.length > 0) setItem(SCHEDULES_KEY, sch);
+    if (sl && sl.length > 0) setItem(SALES_KEY, sl);
+    if (e && e.length > 0) setItem(EXPENSES_KEY, e);
+    
+    return true;
+  } catch (err) {
+    console.error('Error syncing from Supabase:', err);
+    return false;
+  }
+}
+
 export function getServices(): Service[] {
   return getItem(SERVICES_KEY, defaultServices);
 }
 
 export function saveServices(services: Service[]) {
   setItem(SERVICES_KEY, services);
+  supabase.from('services').upsert(services).then();
 }
 
 export function getBookings(): Booking[] {
@@ -107,13 +156,16 @@ export function getBookings(): Booking[] {
 }
 
 export function saveBooking(booking: Booking) {
+  const b = { ...booking, seen: false };
   const bookings = getBookings();
-  bookings.push({ ...booking, seen: false });
+  bookings.push(b);
   setItem(BOOKINGS_KEY, bookings);
+  supabase.from('bookings').insert(b).then();
 }
 
 export function updateBookings(bookings: Booking[]) {
   setItem(BOOKINGS_KEY, bookings);
+  supabase.from('bookings').upsert(bookings).then();
 }
 
 export function getSchedules(): DaySchedule[] {
@@ -122,6 +174,7 @@ export function getSchedules(): DaySchedule[] {
 
 export function saveSchedules(schedules: DaySchedule[]) {
   setItem(SCHEDULES_KEY, schedules);
+  supabase.from('schedules').upsert(schedules).then();
 }
 
 export function getSales(): Sale[] {
@@ -130,6 +183,7 @@ export function getSales(): Sale[] {
 
 export function saveSales(sales: Sale[]) {
   setItem(SALES_KEY, sales);
+  supabase.from('sales').upsert(sales).then();
 }
 
 export function getExpenses(): Expense[] {
@@ -138,6 +192,7 @@ export function getExpenses(): Expense[] {
 
 export function saveExpenses(expenses: Expense[]) {
   setItem(EXPENSES_KEY, expenses);
+  supabase.from('expenses').upsert(expenses).then();
 }
 
 export function getTestimonials(): Testimonial[] {
