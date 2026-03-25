@@ -302,7 +302,19 @@ export function subscribeToBookings(callback: (bookings: Booking[]) => void) {
 
 
 export function getServices(): Service[] {
-  return getItem(SERVICES_KEY, defaultServices);
+  const local = getItem<Service[]>(SERVICES_KEY, defaultServices);
+  
+  // Mescla novos serviços padrão na lista atual automaticamente
+  const existingIds = new Set(local.map((x: any) => x.id));
+  const missing = defaultServices.filter(svc => !existingIds.has(svc.id));
+  if (missing.length > 0) {
+    const merged = [...local, ...missing];
+    // Salva sem disparar evento para evitar loop infinito sincronamente
+    localStorage.setItem(SERVICES_KEY, JSON.stringify(merged));
+    return merged;
+  }
+  
+  return local;
 }
 
 export function saveServices(services: Service[]) {
